@@ -3,6 +3,7 @@ import { computed, reactive, ref } from 'vue'
 import {
   judgmentItems,
   type AlertLevel,
+  type AiConclusion,
   type JudgmentItem,
   type JudgmentStatus,
 } from '../mock/judgment'
@@ -15,10 +16,10 @@ const filters = reactive({
   type: '',
   captureRange: null as [string, string] | null,
   location: '',
-  dept: '',
   status: '' as '' | JudgmentStatus,
-  aiConclusion: '',
+  aiConclusion: '' as '' | AiConclusion,
   alertLevel: '' as '' | AlertLevel,
+  dept: '',
 })
 
 const detailVisible = ref(false)
@@ -27,8 +28,8 @@ const current = ref<JudgmentItem | null>(null)
 const typeOptions = computed(() => [...new Set(list.value.map((i) => i.type))])
 const locationOptions = computed(() => [...new Set(list.value.map((i) => i.location))])
 const deptOptions = computed(() => [...new Set(list.value.map((i) => i.dept))])
-const statusOptions: JudgmentStatus[] = ['研判通过', '研判未通过', '待研判']
-const conclusionOptions = computed(() => [...new Set(list.value.map((i) => i.aiConclusion))])
+const statusOptions: JudgmentStatus[] = ['已研判', '待研判']
+const conclusionOptions: AiConclusion[] = ['疑似违规', '待核实', '正常', '—']
 const levelOptions: AlertLevel[] = ['高', '中', '低', '—']
 
 function parseTime(value: string) {
@@ -74,10 +75,10 @@ function resetFilters() {
   filters.type = ''
   filters.captureRange = null
   filters.location = ''
-  filters.dept = ''
   filters.status = ''
   filters.aiConclusion = ''
   filters.alertLevel = ''
+  filters.dept = ''
 }
 
 function openDetail(row: JudgmentItem) {
@@ -85,21 +86,28 @@ function openDetail(row: JudgmentItem) {
   detailVisible.value = true
 }
 
-function onUpdated(id: string, status: JudgmentStatus) {
+function onUpdated(id: string, status: JudgmentStatus, conclusion?: AiConclusion) {
   const target = list.value.find((i) => i.id === id)
-  if (target) target.status = status
+  if (!target) return
+  target.status = status
+  if (conclusion) target.aiConclusion = conclusion
 }
 
 function statusType(status: JudgmentStatus) {
-  if (status === '研判通过') return 'success'
-  if (status === '研判未通过') return 'danger'
-  return 'warning'
+  return status === '已研判' ? 'success' : 'warning'
 }
 
 function levelType(level: AlertLevel) {
   if (level === '高') return 'danger'
   if (level === '中') return 'warning'
   if (level === '低') return 'info'
+  return 'info'
+}
+
+function conclusionType(c: AiConclusion) {
+  if (c === '疑似违规') return 'danger'
+  if (c === '待核实') return 'warning'
+  if (c === '正常') return 'success'
   return 'info'
 }
 </script>
@@ -142,18 +150,10 @@ function levelType(level: AlertLevel) {
           <el-option v-for="l in locationOptions" :key="l" :label="l" :value="l" />
         </el-select>
         <el-select
-          v-model="filters.dept"
-          clearable
-          placeholder="责任单位"
-          style="width: 140px"
-        >
-          <el-option v-for="d in deptOptions" :key="d" :label="d" :value="d" />
-        </el-select>
-        <el-select
           v-model="filters.status"
           clearable
           placeholder="状态"
-          style="width: 140px"
+          style="width: 120px"
         >
           <el-option v-for="s in statusOptions" :key="s" :label="s" :value="s" />
         </el-select>
@@ -161,7 +161,7 @@ function levelType(level: AlertLevel) {
           v-model="filters.aiConclusion"
           clearable
           placeholder="AI研判结论"
-          style="width: 160px"
+          style="width: 140px"
         >
           <el-option v-for="c in conclusionOptions" :key="c" :label="c" :value="c" />
         </el-select>
@@ -173,6 +173,14 @@ function levelType(level: AlertLevel) {
         >
           <el-option v-for="l in levelOptions" :key="l" :label="l" :value="l" />
         </el-select>
+        <el-select
+          v-model="filters.dept"
+          clearable
+          placeholder="责任单位"
+          style="width: 140px"
+        >
+          <el-option v-for="d in deptOptions" :key="d" :label="d" :value="d" />
+        </el-select>
         <el-button @click="resetFilters">重置</el-button>
       </div>
 
@@ -181,13 +189,23 @@ function levelType(level: AlertLevel) {
         <el-table-column prop="type" label="事件类型" min-width="110" />
         <el-table-column prop="captureTime" label="抓拍时间" min-width="140" />
         <el-table-column prop="location" label="所在位置" min-width="200" />
-        <el-table-column prop="dept" label="责任单位" min-width="110" />
-        <el-table-column label="状态" width="120">
+        <el-table-column label="状态" width="100">
           <template #default="{ row }">
             <el-tag :type="statusType(row.status)" effect="light">{{ row.status }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="aiConclusion" label="AI研判结论" min-width="140" />
+        <el-table-column label="AI研判结论" min-width="120">
+          <template #default="{ row }">
+            <el-tag
+              v-if="row.aiConclusion !== '—'"
+              :type="conclusionType(row.aiConclusion)"
+              effect="plain"
+            >
+              {{ row.aiConclusion }}
+            </el-tag>
+            <span v-else class="muted">—</span>
+          </template>
+        </el-table-column>
         <el-table-column label="预警等级" width="100">
           <template #default="{ row }">
             <el-tag
@@ -200,6 +218,7 @@ function levelType(level: AlertLevel) {
             <span v-else class="muted">—</span>
           </template>
         </el-table-column>
+        <el-table-column prop="dept" label="责任单位" min-width="110" />
         <el-table-column label="操作" width="110" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="openDetail(row)">查看详情</el-button>

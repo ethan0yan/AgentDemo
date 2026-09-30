@@ -1,7 +1,17 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Picture } from '@element-plus/icons-vue'
+import {
+  Star,
+  Download,
+  Share,
+  RefreshRight,
+  Clock,
+  Location,
+  Compass,
+  View,
+  Picture,
+} from '@element-plus/icons-vue'
 import type { WarningEvent } from '../mock/warnings'
 
 const visible = defineModel<boolean>({ default: false })
@@ -14,359 +24,426 @@ const emit = defineEmits<{
   handled: [id: string, status: WarningEvent['status']]
 }>()
 
-const statusType = computed(() => {
-  const map: Record<string, '' | 'success' | 'warning' | 'danger' | 'info'> = {
-    待处理: 'danger',
-    处置中: 'warning',
-    已办结: 'success',
-    误报: 'info',
-  }
-  return props.event ? map[props.event.status] || 'info' : 'info'
-})
+const base = import.meta.env.BASE_URL
+
+function assetUrl(path?: string) {
+  if (!path) return ''
+  if (/^https?:\/\//.test(path) || path.startsWith('data:')) return path
+  return `${base}${path.replace(/^\//, '')}`
+}
+
+const photoUrl = computed(() => assetUrl(props.event?.photo))
+const mapUrl = computed(() => assetUrl(props.event?.mapImage))
+const titleText = computed(() =>
+  props.event ? `${props.event.type} ${props.event.displayCode}` : '',
+)
 
 function close() {
   visible.value = false
 }
 
-function onHandle() {
+function onIgnore() {
   if (!props.event) return
-  ElMessage.success('已进入初次处置')
-  emit('handled', props.event.id, '处置中')
-  close()
-}
-
-function onFalseAlarm() {
-  if (!props.event) return
-  ElMessage.warning('已标记为误报')
+  ElMessage.info('已忽略该预警')
   emit('handled', props.event.id, '误报')
   close()
 }
 
-function onReport() {
-  ElMessage.success('已上报')
+function onProcess() {
+  if (!props.event) return
+  ElMessage.success('已进入处理流程')
+  emit('handled', props.event.id, '处置中')
+  close()
 }
 </script>
 
 <template>
   <el-dialog
     v-model="visible"
-    width="1120px"
-    top="4vh"
-    class="event-detail-dialog"
+    width="1180px"
+    top="3vh"
+    class="warning-detail-dialog"
     destroy-on-close
+    :show-close="true"
     :close-on-click-modal="false"
   >
     <template #header>
-      <div class="dlg-header" v-if="event">
-        <span class="dlg-title">事件详情</span>
-        <el-tag type="primary" effect="light" round>{{ event.type }}</el-tag>
-        <el-tag :type="statusType" effect="light" round>{{ event.status }}</el-tag>
-      </div>
+      <span class="dlg-title">事件预警详情</span>
     </template>
 
-    <div v-if="event" class="dlg-body">
-      <div class="left-col">
-        <div class="media-row">
-          <div class="media-card">
-            <div class="media-head">
-              <span>正射图片</span>
-              <el-button size="small" type="primary" plain>地图显示</el-button>
-            </div>
-            <div class="media-box empty">
-              <el-icon :size="36"><Picture /></el-icon>
-              <span>暂未上传正射图片</span>
-            </div>
+    <div v-if="event" class="detail-layout">
+      <section class="visual-pane">
+        <div v-if="photoUrl" class="photo-stage">
+          <img :src="photoUrl" :alt="titleText" class="photo" />
+          <div v-if="event.dateBadge" class="date-badge">
+            <span>{{ event.dateBadge[0] }}</span>
+            <i />
+            <span>{{ event.dateBadge[1] }}</span>
           </div>
-          <div class="media-card">
-            <div class="media-head">
-              <span>事件历史图片</span>
-            </div>
-            <div class="media-box">
-              <img :src="event.historyImage" alt="事件历史图片" />
+          <button class="eye-btn" type="button" title="查看标注">
+            <el-icon :size="16"><View /></el-icon>
+          </button>
+        </div>
+        <div v-else class="photo-stage empty">
+          <el-icon :size="48"><Picture /></el-icon>
+          <div class="empty-title">暂无抓拍照片</div>
+          <div class="empty-desc">事件 {{ event.id }}（{{ event.type }}）尚未回传影像</div>
+        </div>
+      </section>
+
+      <aside class="info-pane">
+        <div class="tool-row">
+          <button type="button" class="icon-btn" title="收藏"><el-icon><Star /></el-icon></button>
+          <button type="button" class="icon-btn" title="下载"><el-icon><Download /></el-icon></button>
+          <button type="button" class="icon-btn" title="分享"><el-icon><Share /></el-icon></button>
+          <button type="button" class="icon-btn" title="重新识别"><el-icon><RefreshRight /></el-icon></button>
+          <button type="button" class="icon-btn history" title="历史">
+            <el-icon><Clock /></el-icon>
+            <i class="dot">1</i>
+          </button>
+        </div>
+
+        <div class="head-block">
+          <span class="status-pill">新发现</span>
+          <h2 class="event-title">{{ titleText }}</h2>
+          <p class="meta-line">
+            拍照 {{ event.photoTime }}，识别 {{ event.recognizeTime }}
+          </p>
+          <p class="meta-line">
+            预警 <b class="accent">{{ event.warnCount }}</b> 次，上报
+            <b class="accent">{{ event.reportCount }}</b> 次
+          </p>
+        </div>
+
+        <div class="section">
+          <div class="section-title">
+            <el-icon><Location /></el-icon>
+            <span>位置</span>
+          </div>
+          <div class="section-body">
+            <div>{{ event.location }}</div>
+            <div class="sub">责任单位：{{ event.dept }}</div>
+            <div class="sub">事件编号：{{ event.id }}</div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">
+            <el-icon><Compass /></el-icon>
+            <span>其他</span>
+          </div>
+          <div class="section-body">
+            <div>机场：{{ event.airport }}</div>
+            <div class="route-line">
+              航线：{{ event.route }}
+              <span class="chev">›</span>
             </div>
           </div>
         </div>
 
-        <div class="info-card">
-          <div class="card-title">基础信息</div>
-          <div class="info-grid">
-            <div class="info-item">
-              <span class="label">图斑编号</span>
-              <span class="value">{{ event.parcelNo }}</span>
-            </div>
-            <div class="info-item">
-              <span class="label">所在位置</span>
-              <span class="value">{{ event.location }}</span>
-            </div>
-            <div class="info-item">
-              <span class="label">所属村界</span>
-              <span class="value">{{ event.village }}</span>
-            </div>
-            <div class="info-item">
-              <span class="label">城镇开发边界</span>
-              <span class="value">{{ event.urbanBoundary }}</span>
-            </div>
-            <div class="info-item">
-              <span class="label">责任单位</span>
-              <span class="value">{{ event.dept }}</span>
-            </div>
-            <div class="info-item">
-              <span class="label">权属单位</span>
-              <span class="value">{{ event.ownershipUnit }}</span>
-            </div>
-            <div class="info-item">
-              <span class="label">地籍权属</span>
-              <span class="value">{{ event.cadastralOwner }}</span>
-            </div>
-            <div class="info-item">
-              <span class="label">红线面积</span>
-              <span class="value">{{ event.redLineArea }}</span>
-            </div>
-            <div class="info-item">
-              <span class="label">耕地面积</span>
-              <span class="value">{{ event.farmlandArea }}</span>
-            </div>
-            <div class="info-item">
-              <span class="label">基本农田面积</span>
-              <span class="value">{{ event.basicFarmlandArea }}</span>
-            </div>
+        <div class="mini-map">
+          <img v-if="mapUrl" :src="mapUrl" alt="位置地图" />
+          <div v-else class="map-fallback">
+            <el-icon :size="22"><Location /></el-icon>
+            <span>{{ event.location }}</span>
           </div>
         </div>
 
-        <div class="bottom-row">
-          <div class="info-card">
-            <div class="card-title">地块信息</div>
-            <div class="kv-list">
-              <div v-for="item in event.plotInfo" :key="item.label" class="kv-item">
-                <span class="label">{{ item.label }}</span>
-                <span class="value">{{ item.value }}</span>
-              </div>
-            </div>
-          </div>
-          <div class="info-card">
-            <div class="card-title">规划信息</div>
-            <div class="kv-list">
-              <div v-for="item in event.planInfo" :key="item.label" class="kv-item">
-                <span class="label">{{ item.label }}</span>
-                <span class="value">{{ item.value }}</span>
-              </div>
-            </div>
-          </div>
+        <div class="actions">
+          <button type="button" class="btn ignore" @click="onIgnore">忽略</button>
+          <button type="button" class="btn process" @click="onProcess">处理</button>
         </div>
-      </div>
-
-      <div class="right-col">
-        <div class="info-card records-card">
-          <div class="card-title">处置记录</div>
-          <el-timeline>
-            <el-timeline-item
-              v-for="(rec, idx) in event.records"
-              :key="idx"
-              type="primary"
-              :timestamp="rec.time"
-              placement="top"
-            >
-              <div class="rec-title">
-                <b>{{ rec.title }}</b>
-                <span class="op">{{ rec.operator }}</span>
-              </div>
-              <div class="rec-content">{{ rec.content }}</div>
-              <div class="rec-status">
-                <span class="from">{{ rec.fromStatus }}</span>
-                <span class="arrow">→</span>
-                <el-tag size="small" type="danger" effect="plain">{{ rec.toStatus }}</el-tag>
-              </div>
-            </el-timeline-item>
-          </el-timeline>
-        </div>
-      </div>
+      </aside>
     </div>
-
-    <template #footer>
-      <div class="dlg-footer">
-        <el-button @click="close">取消</el-button>
-        <el-button type="primary" @click="onHandle">初次处置</el-button>
-        <el-button type="warning" @click="onFalseAlarm">标记误报</el-button>
-        <el-button class="report-btn" @click="onReport">上报</el-button>
-      </div>
-    </template>
   </el-dialog>
 </template>
 
 <style scoped>
-.dlg-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
 .dlg-title {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 700;
-  margin-right: 4px;
 }
 
-.dlg-body {
+.detail-layout {
   display: grid;
-  grid-template-columns: 1fr 280px;
-  gap: 14px;
-  max-height: calc(92vh - 160px);
-  overflow: auto;
-  padding-right: 4px;
-}
-
-.left-col {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  min-width: 0;
-}
-
-.media-row,
-.bottom-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-}
-
-.media-card,
-.info-card {
-  background: #fff;
-  border: 1px solid #e8eef3;
-  border-radius: 10px;
-  padding: 12px;
-}
-
-.media-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 8px;
-  font-weight: 600;
-  color: #334555;
-}
-
-.media-box {
-  height: 180px;
+  grid-template-columns: 1.55fr 0.9fr;
+  gap: 0;
+  min-height: 560px;
+  margin: -8px -16px -12px;
   border-radius: 8px;
   overflow: hidden;
-  background: #f4f7fa;
+  background: #0f1419;
+}
+
+.visual-pane {
+  min-width: 0;
+  background: #111;
+}
+
+.photo-stage {
+  position: relative;
+  height: 100%;
+  min-height: 560px;
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
 }
 
-.media-box img {
+.photo {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  display: block;
 }
 
-.media-box.empty {
+.photo-stage.empty {
   flex-direction: column;
-  gap: 8px;
-  color: #8aa0b2;
-  border: 1px dashed #d5dee7;
-}
-
-.card-title {
-  font-weight: 700;
-  margin-bottom: 12px;
-  color: #243747;
-}
-
-.info-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px 20px;
-}
-
-.info-item,
-.kv-item {
-  display: flex;
   gap: 10px;
-  align-items: flex-start;
+  color: #9aa8b5;
+  background: linear-gradient(160deg, #1a222b, #121820);
+}
+
+.empty-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #d7e1ea;
+}
+
+.empty-desc {
   font-size: 13px;
-  line-height: 1.5;
+  opacity: 0.8;
 }
 
-.label {
-  flex: 0 0 118px;
-  color: #7a8d9c;
-}
-
-.value {
-  color: #1f2a33;
-  word-break: break-all;
-}
-
-.kv-list {
+.date-badge {
+  position: absolute;
+  left: 12px;
+  top: 42%;
+  transform: translateY(-50%);
+  width: 34px;
+  padding: 10px 0;
+  border-radius: 18px;
+  background: rgba(20, 24, 30, 0.55);
+  color: #fff;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-}
-
-.records-card {
-  height: 100%;
-  min-height: 420px;
-}
-
-.rec-title {
-  display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 4px;
-}
-
-.op {
-  color: #8aa0b2;
-  font-size: 12px;
-}
-
-.rec-content {
+  gap: 4px;
   font-size: 13px;
-  color: #4b6070;
-  margin-bottom: 6px;
+  font-weight: 600;
+  backdrop-filter: blur(4px);
 }
 
-.rec-status {
+.date-badge i {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #fff;
+  opacity: 0.7;
+}
+
+.eye-btn {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  background: rgba(0, 0, 0, 0.25);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.info-pane {
+  background: #fff;
+  color: #1f2a33;
+  padding: 14px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.tool-row {
+  display: flex;
+  justify-content: flex-end;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+.icon-btn {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  background: transparent;
+  color: #5b6b78;
+  border-radius: 8px;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+
+.icon-btn:hover {
+  background: #f2f5f8;
+}
+
+.icon-btn.history .dot {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  border-radius: 8px;
+  background: #e34d4d;
+  color: #fff;
+  font-size: 10px;
+  line-height: 14px;
+  font-style: normal;
+}
+
+.head-block {
+  margin-bottom: 16px;
+}
+
+.status-pill {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: #3a4450;
+  color: #fff;
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+
+.event-title {
+  margin: 0 0 8px;
+  font-size: 22px;
+  line-height: 1.25;
+  font-weight: 750;
+}
+
+.meta-line {
+  margin: 0 0 4px;
+  font-size: 13px;
+  color: #6a7b88;
+}
+
+.accent {
+  color: #e34d4d;
+  font-weight: 700;
+}
+
+.section {
+  margin-bottom: 14px;
+}
+
+.section-title {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 8px;
 }
 
-.from {
-  color: #98a6b3;
+.section-body {
+  font-size: 13px;
+  line-height: 1.7;
+  color: #334555;
+  padding-left: 22px;
 }
 
-.arrow {
-  color: #98a6b3;
+.sub {
+  color: #6a7b88;
 }
 
-.dlg-footer {
+.route-line {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+
+.chev {
+  color: #98a6b3;
+  font-size: 16px;
+}
+
+.mini-map {
+  margin-top: auto;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #eef2f5;
+  height: 140px;
+  border: 1px solid #e4ebf0;
+}
+
+.mini-map img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.map-fallback {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #7a8d9c;
+  font-size: 12px;
+  text-align: center;
+  padding: 12px;
+}
+
+.actions {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
   gap: 10px;
+  margin-top: 14px;
 }
 
-.report-btn {
-  --el-button-bg-color: #e8f7f4;
-  --el-button-border-color: #7ec8b8;
-  --el-button-text-color: #1f7a63;
-  --el-button-hover-bg-color: #d8f1eb;
-  --el-button-hover-border-color: #1f7a63;
-  --el-button-hover-text-color: #155a49;
+.btn {
+  height: 42px;
+  border: 0;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
 }
 
-@media (max-width: 1100px) {
-  .dlg-body {
+.btn.ignore {
+  background: #2f3740;
+  color: #fff;
+}
+
+.btn.process {
+  background: #2f7bff;
+  color: #fff;
+}
+
+.btn.process:hover {
+  background: #1f6aef;
+}
+
+@media (max-width: 960px) {
+  .detail-layout {
     grid-template-columns: 1fr;
   }
 
-  .media-row,
-  .bottom-row {
-    grid-template-columns: 1fr;
+  .photo-stage {
+    min-height: 320px;
   }
+}
+</style>
+
+<style>
+.warning-detail-dialog .el-dialog__body {
+  padding-top: 8px;
 }
 </style>
