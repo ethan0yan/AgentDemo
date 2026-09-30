@@ -10,18 +10,15 @@
 
 ## 在线访问（推荐）
 
-本项目已配置 **GitHub Pages** 自动部署。推送到 `main` 分支后：
+推送到 `main` 后，GitHub Actions 会自动构建并部署到 GitHub Pages。
 
-1. 打开仓库 **Settings → Pages**
-2. **Source** 选择 **GitHub Actions**
-3. 等待 Actions 跑完（约 1～2 分钟）
-4. 访问地址一般为：
+**演示地址：**
 
-```text
-https://<你的用户名>.github.io/<仓库名>/
-```
+https://ethan0yan.github.io/AgentDemo/
 
-他人无需安装 Node / npm，浏览器打开上述链接即可使用。
+他人无需安装 Node / npm，浏览器直接打开即可使用。
+
+> 首次部署：打开仓库 **Settings → Pages**，Source 选择 **GitHub Actions**，等待 Actions 跑完约 1～2 分钟。
 
 ## 本地开发（可选）
 

@@ -1,5 +1,5 @@
 # 把静态站点部署到 GitHub Pages
-# 推送 main 后自动构建；首次需在仓库 Settings → Pages 中启用
+# 推送 main 后自动构建；首次需在仓库 Settings → Pages 中启用 GitHub Actions
 
 name: Deploy GitHub Pages
 
