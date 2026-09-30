@@ -1,7 +1,8 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHashHistory } from 'vue-router'
 
 const router = createRouter({
-  history: createWebHistory(),
+  // Hash 模式，静态托管刷新页面不会 404
+  history: createWebHashHistory(),
   routes: [
     { path: '/', redirect: '/warning' },
     { path: '/classification', redirect: '/warning' },
