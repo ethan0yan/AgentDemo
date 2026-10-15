@@ -7,7 +7,9 @@ import {
   type TrackStatus,
 } from '../mock/tracking'
 
-const list = ref<TrackItem[]>(trackItems.map((item) => ({ ...item, nodes: [...item.nodes] })))
+const list = ref<TrackItem[]>(
+  trackItems.map((item) => ({ ...item, nodes: item.nodes.map((n) => ({ ...n })) })),
+)
 
 const filters = reactive({
   id: '',
@@ -19,10 +21,18 @@ const filters = reactive({
 })
 
 const current = ref<TrackItem | null>(list.value[0] ?? null)
+const previewVisible = ref(false)
+const previewUrl = ref('')
 
 const typeOptions = computed(() => [...new Set(list.value.map((i) => i.type))])
 const locationOptions = computed(() => [...new Set(list.value.map((i) => i.location))])
 const deptOptions = computed(() => [...new Set(list.value.map((i) => i.dept))])
+
+const base = import.meta.env.BASE_URL
+function assetUrl(path?: string) {
+  if (!path) return ''
+  return `${base}${path.replace(/^\//, '')}`
+}
 
 function parseTime(value: string) {
   if (!value || value === '—') return null
@@ -68,12 +78,18 @@ function statusType(status: TrackStatus) {
   const map: Record<TrackStatus, '' | 'success' | 'warning' | 'danger' | 'info' | 'primary'> = {
     已上报: 'info',
     已分流: 'primary',
-    已受理: '',
-    反馈处理: 'warning',
-    已退回: 'danger',
+    已研判: '',
+    已推送: 'warning',
+    待处置: 'danger',
     已办结: 'success',
   }
   return map[status]
+}
+
+function openPreview(path?: string) {
+  if (!path) return
+  previewUrl.value = assetUrl(path)
+  previewVisible.value = true
 }
 </script>
 
@@ -173,12 +189,29 @@ function statusType(status: TrackStatus) {
               placement="top"
             >
               <div class="node-title">{{ node.title }}</div>
+              <div v-if="node.detail" class="node-detail">{{ node.detail }}</div>
               <div v-if="node.remark" class="node-remark">{{ node.remark }}</div>
+              <div
+                v-if="node.image && node.done"
+                class="node-image"
+                @click="openPreview(node.image)"
+              >
+                <img :src="assetUrl(node.image)" :alt="node.title" />
+              </div>
             </el-timeline-item>
           </el-timeline>
         </div>
       </div>
     </el-card>
+
+    <el-dialog
+      v-model="previewVisible"
+      title="节点图片"
+      width="860px"
+      destroy-on-close
+    >
+      <img v-if="previewUrl" :src="previewUrl" class="preview-img" alt="节点图片" />
+    </el-dialog>
   </div>
 </template>
 
@@ -198,14 +231,16 @@ function statusType(status: TrackStatus) {
 
 .split {
   display: grid;
-  grid-template-columns: 1.5fr 0.9fr;
+  grid-template-columns: 1.35fr 1fr;
   gap: 18px;
 }
 
 .timeline-panel {
   background: #f5f9fc;
   border-radius: 12px;
-  padding: 16px 16px 4px;
+  padding: 16px 16px 8px;
+  max-height: 720px;
+  overflow: auto;
 }
 
 .card-title {
@@ -227,10 +262,41 @@ function statusType(status: TrackStatus) {
   font-weight: 600;
 }
 
+.node-detail {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #4b6070;
+  line-height: 1.5;
+}
+
 .node-remark {
   margin-top: 4px;
   font-size: 12px;
   color: #c4561a;
+}
+
+.node-image {
+  margin-top: 8px;
+  width: 100%;
+  max-width: 280px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #dce5ee;
+  cursor: zoom-in;
+  background: #fff;
+}
+
+.node-image img {
+  display: block;
+  width: 100%;
+  height: 120px;
+  object-fit: cover;
+}
+
+.preview-img {
+  width: 100%;
+  display: block;
+  border-radius: 8px;
 }
 
 @media (max-width: 1100px) {

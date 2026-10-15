@@ -23,7 +23,9 @@ const filters = reactive({
 })
 
 const detailVisible = ref(false)
+const processVisible = ref(false)
 const current = ref<JudgmentItem | null>(null)
+const processImage = `${import.meta.env.BASE_URL}images/req-adjust/judgment-process.png`
 
 const typeOptions = computed(() => [...new Set(list.value.map((i) => i.type))])
 const locationOptions = computed(() => [...new Set(list.value.map((i) => i.location))])
@@ -84,6 +86,10 @@ function resetFilters() {
 function openDetail(row: JudgmentItem) {
   current.value = row
   detailVisible.value = true
+}
+
+function openProcess(_row: JudgmentItem) {
+  processVisible.value = true
 }
 
 function onUpdated(id: string, status: JudgmentStatus, conclusion?: AiConclusion) {
@@ -219,9 +225,10 @@ function conclusionType(c: AiConclusion) {
           </template>
         </el-table-column>
         <el-table-column prop="dept" label="责任单位" min-width="110" />
-        <el-table-column label="操作" width="110" fixed="right">
+        <el-table-column label="操作" width="180" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="openDetail(row)">查看详情</el-button>
+            <el-button link type="success" @click="openProcess(row)">研判过程</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -232,6 +239,19 @@ function conclusionType(c: AiConclusion) {
       :event="current"
       @updated="onUpdated"
     />
+
+    <el-dialog
+      v-model="processVisible"
+      title="研判过程"
+      width="960px"
+      top="4vh"
+      destroy-on-close
+      class="process-dialog"
+    >
+      <div class="process-wrap">
+        <img :src="processImage" alt="研判过程" class="process-img" />
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -251,5 +271,17 @@ function conclusionType(c: AiConclusion) {
 
 .muted {
   color: #98a6b3;
+}
+
+.process-wrap {
+  max-height: calc(90vh - 120px);
+  overflow: auto;
+  background: #0f1419;
+  border-radius: 8px;
+}
+
+.process-img {
+  width: 100%;
+  display: block;
 }
 </style>
