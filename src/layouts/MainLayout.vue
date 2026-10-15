@@ -21,7 +21,7 @@ const menus = [
 ]
 
 const active = computed(() => route.path)
-const pageTitle = computed(() => (route.meta.title as string) || '低空控制平台')
+const pageTitle = computed(() => (route.meta.title as string) || '事件统管')
 
 function go(path: string) {
   router.push(path)
@@ -34,7 +34,7 @@ function go(path: string) {
       <div class="brand">
         <div class="brand-mark" />
         <div>
-          <div class="brand-name">低空控制平台</div>
+          <div class="brand-name">事件统管</div>
           <div class="brand-sub">无人机研判与业务分流</div>
         </div>
       </div>
